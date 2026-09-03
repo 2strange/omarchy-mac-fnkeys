@@ -11,16 +11,16 @@ brightness and volume require Fn out of the box.
 
 ![Right section of the Omarchy top bar with the Fn keys toggle showing printed-keys mode](https://raw.githubusercontent.com/alnandr/omarchy-macbook-fn-keys/89c6c8623539a67271f64bda4b550e0457dfdd9e/preview.png)
 
-The 󰃞 icon sits in the right section of the bar, next to the tray, and
+The <img src="docs/icons/media.png" width="16" alt="brightness icon"> icon sits in the right section of the bar, next to the tray, and
 shows that the function row is currently sending its printed keys.
 
 ## Bar icon
 
 | Icon | Meaning | Click |
 | --- | --- | --- |
-| 󰃞 | Printed keys (brightness, volume, media) without Fn | Switch to F1-F12 |
-| 󰡀 | F1-F12 without Fn | Switch to printed keys |
-| 󰌌 | One-time setup has not run yet | Run setup in a floating terminal |
+| <img src="docs/icons/media.png" width="24" alt="brightness icon"> | Printed keys (brightness, volume, media) without Fn | Switch to F1-F12 |
+| <img src="docs/icons/fkeys.png" width="24" alt="function key icon"> | F1-F12 without Fn | Switch to printed keys |
+| <img src="docs/icons/setup.png" width="24" alt="keyboard icon"> | One-time setup has not run yet | Run setup in a floating terminal |
 
 Hover the icon for a tooltip describing the current mode. The mode persists
 across shell reloads and reboots. The icon hides itself on machines where
@@ -60,7 +60,7 @@ soon as you switch to F1-F12 or the shell exits.
 omarchy plugin add https://github.com/alnandr/omarchy-macbook-fn-keys.git --enable
 ```
 
-Then click the 󰌌 icon on the right of the bar (or run the setup script
+Then click the <img src="docs/icons/setup.png" width="16" alt="keyboard icon"> icon on the right of the bar (or run the setup script
 directly) and enter your password once:
 
 ```sh
