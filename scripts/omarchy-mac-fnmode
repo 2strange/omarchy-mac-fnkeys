@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Root-owned helper installed to /usr/local/libexec by scripts/setup.
+# Fixed command surface: "1" or "2". Nothing else is accepted.
+set -euo pipefail
+
+parameter=/sys/module/hid_apple/parameters/fnmode
+persistent_config=/etc/modprobe.d/hid_apple.conf
+
+fail() {
+  printf 'error: %s\n' "$1" >&2
+  exit 1
+}
+
+[ "$(id -u)" -eq 0 ] || fail "must run as root"
+[ -e "$parameter" ] || fail "hid_apple fnmode is unavailable"
+
+label_for() {
+  case "$1" in
+    1) printf 'media\n' ;;
+    2) printf 'fkeys\n' ;;
+    *) fail "unexpected kernel value: $1" ;;
+  esac
+}
+
+persist_fnmode() {
+  local tmp
+  tmp=$(mktemp)
+  printf '%s\n' \
+    '# Managed by the MacBook Function Keys Omarchy plugin.' \
+    '# fnmode=1: printed function-row keys without Fn (macOS-like).' \
+    '# fnmode=2: F1-F12 without Fn (Omarchy Apple default).' \
+    "options hid_apple fnmode=$1" >"$tmp"
+  install -Dm644 "$tmp" "$persistent_config"
+  rm -f "$tmp"
+}
+
+case "${1:-}" in
+  1|2)
+    previous=$(<"$parameter")
+    printf '%s\n' "$1" >"$parameter" || fail "could not change kernel value"
+    [ "$(<"$parameter")" = "$1" ] || fail "kernel rejected the requested value"
+    if ! persist_fnmode "$1"; then
+      printf '%s\n' "$previous" >"$parameter" || true
+      fail "could not persist the requested value"
+    fi
+    label_for "$1"
+    ;;
+  *)
+    printf 'usage: %s 1|2\n' "$0" >&2
+    exit 2
+    ;;
+esac

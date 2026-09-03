@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Reverses scripts/setup. Run as your normal user; it asks for sudo once.
+#
+#   1. Restores Omarchy's Apple default (fnmode=2, F1-F12 without Fn) and
+#      persists it in /etc/modprobe.d/hid_apple.conf.
+#   2. Removes the root helper and its sudoers rule.
+#   3. Removes the marked block from ~/.config/hypr/bindings.lua.
+set -euo pipefail
+
+plugin_id=io.github.alnandr.macbook-fn-keys
+bindings_file=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/bindings.lua
+marker_begin="-- >>> $plugin_id >>>"
+marker_end="-- <<< $plugin_id <<<"
+
+fail() {
+  printf 'uninstall: %s\n' "$1" >&2
+  exit 1
+}
+
+[ "$(id -u)" -ne 0 ] || fail "run this as your normal user, not with sudo; it asks for sudo itself"
+
+printf 'Removing the root helper and sudo rule (asks for your password).\n'
+sudo bash -c '
+  set -euo pipefail
+  helper=/usr/local/libexec/omarchy-mac-fnmode
+  policy=/etc/sudoers.d/omarchy-mac-fnmode
+  if [ -x "$helper" ]; then
+    "$helper" 2 >/dev/null || printf "could not restore fnmode=2; the modprobe config was left as is\n" >&2
+  fi
+  rm -f "$helper" "$policy"
+'
+
+if [ -f "$bindings_file" ] && grep -qF "$marker_begin" "$bindings_file"; then
+  tmp=$(mktemp)
+  awk -v begin="$marker_begin" -v end="$marker_end" '
+    $0 == begin { skipping = 1; next }
+    $0 == end { skipping = 0; next }
+    !skipping { print }
+  ' "$bindings_file" >"$tmp"
+  cat "$tmp" >"$bindings_file"
+  rm -f "$tmp"
+  printf 'Removed Hyprland bindings from %s.\n' "$bindings_file"
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
+    hyprctl reload >/dev/null || true
+  fi
+fi
+
+printf '\nSetup removed. The function row sends F1-F12 without Fn again (Omarchy default).\n'
+printf 'Remove the plugin itself with: omarchy plugin remove %s\n' "$plugin_id"

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# One-time setup. Run as your normal user; it asks for sudo once.
+#
+#   1. Installs the root-owned helper to /usr/local/libexec/omarchy-mac-fnmode
+#      and a sudoers rule that lets your user run exactly "helper 1" and
+#      "helper 2" without a password.
+#   2. Switches hid_apple to fnmode=1 (printed keys without Fn) and persists
+#      it in /etc/modprobe.d/hid_apple.conf.
+#   3. Adds one marked block to ~/.config/hypr/bindings.lua that loads the
+#      plugin's F3/F4/F6 bindings, then reloads Hyprland.
+set -euo pipefail
+
+plugin_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+plugin_id=io.github.alnandr.macbook-fn-keys
+parameter=/sys/module/hid_apple/parameters/fnmode
+bindings_file=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/bindings.lua
+marker_begin="-- >>> $plugin_id >>>"
+marker_end="-- <<< $plugin_id <<<"
+
+fail() {
+  printf 'setup: %s\n' "$1" >&2
+  exit 1
+}
+
+[ "$(id -u)" -ne 0 ] || fail "run this as your normal user, not with sudo; it asks for sudo itself"
+[ -e "$parameter" ] || fail "this kernel does not expose hid_apple fnmode (no Apple keyboard driver loaded)"
+[[ $USER =~ ^[a-z_][a-z0-9_-]*$ ]] || fail "unexpected user name '$USER'"
+
+printf 'Installing the root helper and sudo rule for %s (asks for your password).\n' "$USER"
+sudo bash "$plugin_dir/scripts/setup-root" "$USER" "$plugin_dir/scripts/omarchy-mac-fnmode"
+
+if [ -f "$bindings_file" ] && grep -qF "$marker_begin" "$bindings_file"; then
+  printf 'Hyprland bindings already installed in %s.\n' "$bindings_file"
+else
+  mkdir -p "$(dirname -- "$bindings_file")"
+  cat >>"$bindings_file" <<EOF
+
+$marker_begin
+-- MacBook Function Keys plugin: F3 Mission Control, F4 Spotlight, F6 Do Not Disturb.
+-- Managed by the plugin's setup/uninstall scripts; edit the plugin copy instead.
+local macbook_fn_keys = os.getenv("HOME") .. "/.config/omarchy/plugins/$plugin_id/hypr/bindings.lua"
+local macbook_fn_keys_file = io.open(macbook_fn_keys)
+if macbook_fn_keys_file then
+  macbook_fn_keys_file:close()
+  dofile(macbook_fn_keys)
+end
+$marker_end
+EOF
+  printf 'Added Hyprland bindings to %s.\n' "$bindings_file"
+fi
+
+if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
+  hyprctl reload >/dev/null || true
+fi
+
+printf '\nSetup complete. The function row now sends brightness, volume and media without Fn.\n'
+printf 'Click the Fn keys icon in the bar to switch between that and F1-F12.\n'
