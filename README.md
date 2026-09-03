@@ -9,7 +9,10 @@ real function keys.
 Omarchy's Apple install defaults the other way (`fnmode=2`), which is why
 brightness and volume require Fn out of the box.
 
-![Fn keys toggle in the Omarchy bar](preview.png)
+![Right section of the Omarchy top bar with the Fn keys toggle showing printed-keys mode](preview.png?v=2)
+
+The 󰃞 icon sits in the right section of the bar, next to the tray, and
+shows that the function row is currently sending its printed keys.
 
 ## Bar icon
 
