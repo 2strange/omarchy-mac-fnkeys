@@ -1,7 +1,12 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # Root-owned helper installed to /usr/local/libexec by scripts/setup.
 # Fixed command surface: "1" or "2". Nothing else is accepted.
+#
+# The SHA-256 of this file is pinned in scripts/setup-root; root installs only
+# bytes that match that pin. Editing this file requires updating the pin.
 set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
+umask 022
 
 parameter=/sys/module/hid_apple/parameters/fnmode
 persistent_config=/etc/modprobe.d/hid_apple.conf
@@ -24,18 +29,19 @@ label_for() {
 
 persist_fnmode() {
   local tmp
-  tmp=$(mktemp)
+  tmp=$(/usr/bin/mktemp)
   printf '%s\n' \
     '# Managed by the MacBook Function Keys Omarchy plugin.' \
     '# fnmode=1: printed function-row keys without Fn (macOS-like).' \
     '# fnmode=2: F1-F12 without Fn (Omarchy Apple default).' \
     "options hid_apple fnmode=$1" >"$tmp"
-  install -Dm644 "$tmp" "$persistent_config"
-  rm -f "$tmp"
+  /usr/bin/install -Dm644 "$tmp" "$persistent_config"
+  /usr/bin/rm -f "$tmp"
 }
 
 case "${1:-}" in
   1|2)
+    [ "$#" -eq 1 ] || fail "exactly one argument is accepted"
     previous=$(<"$parameter")
     printf '%s\n' "$1" >"$parameter" || fail "could not change kernel value"
     [ "$(<"$parameter")" = "$1" ] || fail "kernel rejected the requested value"

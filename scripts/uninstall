@@ -1,11 +1,15 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # Reverses scripts/setup. Run as your normal user; it asks for sudo once.
 #
 #   1. Restores Omarchy's Apple default (fnmode=2, F1-F12 without Fn) and
 #      persists it in /etc/modprobe.d/hid_apple.conf.
 #   2. Removes the root helper and its sudoers rule.
 #   3. Removes the marked block from ~/.config/hypr/bindings.lua.
+#
+# The privileged step is a fixed string passed to root by value; root opens
+# nothing under the plugin checkout.
 set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
 
 plugin_id=io.github.alnandr.macbook-fn-keys
 bindings_file=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/bindings.lua
@@ -20,15 +24,19 @@ fail() {
 [ "$(id -u)" -ne 0 ] || fail "run this as your normal user, not with sudo; it asks for sudo itself"
 
 printf 'Removing the root helper and sudo rule (asks for your password).\n'
-sudo bash -c '
+/usr/bin/sudo /usr/bin/bash -c '
   set -euo pipefail
+  export PATH=/usr/bin:/usr/sbin
   helper=/usr/local/libexec/omarchy-mac-fnmode
   policy=/etc/sudoers.d/omarchy-mac-fnmode
-  if [ -x "$helper" ]; then
-    "$helper" 2 >/dev/null || printf "could not restore fnmode=2; the modprobe config was left as is\n" >&2
+  parameter=/sys/module/hid_apple/parameters/fnmode
+  if [ -e "$parameter" ]; then
+    printf "2\n" >"$parameter" || printf "could not restore fnmode=2 in the kernel\n" >&2
   fi
+  printf "%s\n" "options hid_apple fnmode=2" >/etc/modprobe.d/hid_apple.conf ||
+    printf "could not restore the modprobe default\n" >&2
   rm -f "$helper" "$policy"
-'
+' uninstall-root
 
 if [ -f "$bindings_file" ] && grep -qF "$marker_begin" "$bindings_file"; then
   tmp=$(mktemp)
@@ -40,8 +48,8 @@ if [ -f "$bindings_file" ] && grep -qF "$marker_begin" "$bindings_file"; then
   cat "$tmp" >"$bindings_file"
   rm -f "$tmp"
   printf 'Removed Hyprland bindings from %s.\n' "$bindings_file"
-  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
-    hyprctl reload >/dev/null || true
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -x /usr/bin/hyprctl ]; then
+    /usr/bin/hyprctl reload >/dev/null || true
   fi
 fi
 

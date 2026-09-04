@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # One-time setup. Run as your normal user; it asks for sudo once.
 #
 #   1. Installs the root-owned helper to /usr/local/libexec/omarchy-mac-fnmode
@@ -8,7 +8,15 @@
 #      it in /etc/modprobe.d/hid_apple.conf.
 #   3. Adds one marked block to ~/.config/hypr/bindings.lua that loads the
 #      plugin's F3/F4/F6 bindings, then reloads Hyprland.
+#
+# Privilege boundary: root never opens a file under the plugin checkout. The
+# privileged script (scripts/setup-root) is read into this process and passed
+# to root as a string, and the helper's bytes are streamed to root on stdin.
+# Root verifies those bytes against the SHA-256 pinned inside setup-root
+# before installing anything, so a swap of either file after authorization
+# cannot change what root installs.
 set -euo pipefail
+export PATH=/usr/bin:/usr/sbin
 
 plugin_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 plugin_id=io.github.alnandr.macbook-fn-keys
@@ -24,10 +32,19 @@ fail() {
 
 [ "$(id -u)" -ne 0 ] || fail "run this as your normal user, not with sudo; it asks for sudo itself"
 [ -e "$parameter" ] || fail "this kernel does not expose hid_apple fnmode (no Apple keyboard driver loaded)"
-[[ $USER =~ ^[a-z_][a-z0-9_-]*$ ]] || fail "unexpected user name '$USER'"
+user_name=$(id -un)
+[[ $user_name =~ ^[a-z_][a-z0-9_-]*$ ]] || fail "unexpected user name '$user_name'"
 
-printf 'Installing the root helper and sudo rule for %s (asks for your password).\n' "$USER"
-sudo bash "$plugin_dir/scripts/setup-root" "$USER" "$plugin_dir/scripts/omarchy-mac-fnmode"
+# Capture both privileged inputs into memory now, before any prompt.
+root_script=$(<"$plugin_dir/scripts/setup-root")
+helper_bytes=$(<"$plugin_dir/scripts/omarchy-mac-fnmode")
+[ -n "$root_script" ] || fail "scripts/setup-root is empty"
+[ -n "$helper_bytes" ] || fail "scripts/omarchy-mac-fnmode is empty"
+
+printf 'Installing the root helper and sudo rule for %s (asks for your password).\n' "$user_name"
+# $(<file) strips the trailing newline; restore it so the hash matches the pin.
+printf '%s\n' "$helper_bytes" |
+  /usr/bin/sudo /usr/bin/bash -c "$root_script" setup-root "$user_name"
 
 if [ -f "$bindings_file" ] && grep -qF "$marker_begin" "$bindings_file"; then
   printf 'Hyprland bindings already installed in %s.\n' "$bindings_file"
@@ -49,8 +66,8 @@ EOF
   printf 'Added Hyprland bindings to %s.\n' "$bindings_file"
 fi
 
-if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
-  hyprctl reload >/dev/null || true
+if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -x /usr/bin/hyprctl ]; then
+  /usr/bin/hyprctl reload >/dev/null || true
 fi
 
 printf '\nSetup complete. The function row now sends brightness, volume and media without Fn.\n'

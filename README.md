@@ -84,11 +84,26 @@ Setup does three things, all reversible:
 
 - `Service.qml` reads `/sys/module/hid_apple/parameters/fnmode` directly (no
   privileges needed), holds the F6 suspend inhibitor, and runs the helper
-  through `sudo -n` when you click.
+  through `/usr/bin/sudo -n` when you click. Every child process is started by
+  absolute path with the inherited environment cleared, output is bounded to
+  one line, the helper call has a 10 s deadline (SIGTERM, then SIGKILL), and
+  all children are torn down when the plugin unloads.
 - `BarWidget.qml` paints the mode and forwards clicks to the service, so all
   monitors show the same state.
-- `scripts/omarchy-mac-fnmode` is the only privileged code path. Read it before
-  running setup; it is under 60 lines.
+- `scripts/omarchy-mac-fnmode` is the only code that ever runs as root after
+  setup. Read it before running setup; it is under 60 lines.
+
+### Privilege boundary during setup
+
+Root never opens a file under the user-writable plugin checkout. `scripts/setup`
+reads `scripts/setup-root` into memory and passes it to root as a string via
+`sudo /usr/bin/bash -c`, and streams the helper's bytes to root on stdin.
+`setup-root` carries the helper's SHA-256 and refuses to install anything that
+does not match, verifies the installed file again, validates the generated
+sudoers rule with `visudo -c`, and stages everything in a root-only
+`mktemp -d` under `/run`. Swapping either file after the password prompt
+cannot change what root installs. Uninstall uses the same by-value pattern with
+a fixed string.
 
 ## Dependencies
 
