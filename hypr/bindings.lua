@@ -9,4 +9,6 @@
 
 o.bind("XF86LaunchA", "Mission Control", "omarchy-menu toggle apps", { locked = true })
 o.bind("XF86Search", "Spotlight", "omarchy-menu toggle", { locked = true })
+-- MacBookPro11,3 sends KEY_DASHBOARD (Launchpad) on F4 instead of Spotlight.
+o.bind("XF86LaunchB", "Launchpad", "omarchy-menu toggle", { locked = true })
 o.bind_toggle("XF86Sleep", "Do Not Disturb", "notification-silencing", { locked = true })

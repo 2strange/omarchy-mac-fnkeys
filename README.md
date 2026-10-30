@@ -1,4 +1,10 @@
-# MacBook Function Keys
+# Mac Fn keys
+
+A variant of [MacBook Function Keys](https://github.com/alnandr/omarchy-macbook-fn-keys)
+by Alan Garcia, with an Apple-logo bar icon, a menu with an on/off switch and a
+legend of the function row, plus fixes for Omarchy 4.x (icon not showing) and for
+keeping the mode across reboots. The privileged helper and setup are unchanged
+from upstream.
 
 Omarchy plugin for MacBooks with the Apple keyboard driver (`hid_apple`). It
 makes the function row send its printed functions (brightness, volume, media,
@@ -9,27 +15,30 @@ real function keys.
 Omarchy's Apple install defaults the other way (`fnmode=2`), which is why
 brightness and volume require Fn out of the box.
 
-![Right section of the Omarchy top bar with the Fn keys toggle showing printed-keys mode](https://raw.githubusercontent.com/alnandr/omarchy-macbook-fn-keys/89c6c8623539a67271f64bda4b550e0457dfdd9e/preview.png)
+## Bar icon and menu
 
-The <img src="docs/icons/media.png" width="16" alt="brightness icon"> icon sits in the right section of the bar, next to the tray, and
-shows that the function row is currently sending its printed keys.
+| Icon | Meaning |
+| --- | --- |
+| Apple logo, bright | Mac functions on: the function row sends brightness, volume and media without Fn. Hold Fn for F1-F12 |
+| Apple logo, dimmed | Mac functions off: the function row sends F1-F12. Hold Fn for the printed functions |
+| Keyboard | One-time setup has not run yet. Click to run it in a floating terminal |
 
-## Bar icon
+- **Left click** opens the menu: an on/off switch with a short explanation of the
+  current mode and a legend of what each function key does.
+- **Right click** switches the mode directly.
 
-| Icon | Meaning | Click |
-| --- | --- | --- |
-| <img src="docs/icons/media.png" width="24" alt="brightness icon"> | Printed keys (brightness, volume, media) without Fn | Switch to F1-F12 |
-| <img src="docs/icons/fkeys.png" width="24" alt="function key icon"> | F1-F12 without Fn | Switch to printed keys |
-| <img src="docs/icons/keyboard.png" width="24" alt="keyboard icon"> | One-time setup has not run yet | Run setup in a floating terminal |
+The mode persists across shell reloads and reboots. The icon hides itself on
+machines where `hid_apple` is not loaded.
 
-Hover the icon for a tooltip describing the current mode. The mode persists
-across shell reloads and reboots. The icon hides itself on machines where
-`hid_apple` is not loaded.
+The legend in the menu shows the MacBook Pro 2013-2015 row (keyboard backlight on
+F5/F6, Launchpad on F4). Newer models send Spotlight, Dictation and Do Not Disturb
+on F4-F6 instead; the plugin binds those too (see below), only the legend text
+differs.
 
 ## Function row in printed-keys mode
 
-Tested on a 2021 14-inch MacBook Pro (MacBookPro18,3). Other MacBooks with the
-same row layout should behave the same.
+Upstream tested this on a 2021 14-inch MacBook Pro (MacBookPro18,3); this variant
+is tested on a MacBook Pro 11,3 (2014). Other MacBooks should behave like one of the two.
 
 | Key | Printed function | Linux key | Omarchy action |
 | --- | --- | --- | --- |
@@ -46,8 +55,11 @@ same row layout should behave the same.
 | F11 | Volume down | `XF86AudioLowerVolume` | Volume down |
 | F12 | Volume up | `XF86AudioRaiseVolume` | Volume up |
 
-Hold **Fn** to get real F1-F12 for terminals and IDEs, or click the bar icon
-to make F1-F12 the default.
+On MacBook Pro 2013-2015 models F3 sends `XF86LaunchA` (apps menu), F4 sends
+`XF86LaunchB` (Omarchy menu) and F5/F6 the keyboard backlight.
+
+Hold **Fn** to get real F1-F12 for terminals and IDEs, or switch the mode from
+the bar icon to make F1-F12 the default.
 
 F6 is `KEY_SLEEP` to the kernel. While printed-keys mode is active the plugin
 holds a logind `handle-suspend-key` inhibitor so the key silences
@@ -57,14 +69,14 @@ soon as you switch to F1-F12 or the shell exits.
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/alnandr/omarchy-macbook-fn-keys.git --enable
+omarchy plugin add https://github.com/2strange/omarchy-mac-fnkeys.git --enable
 ```
 
-Then click the <img src="docs/icons/keyboard.png" width="16" alt="keyboard icon"> icon on the right of the bar (or run the setup script
+Then click the keyboard icon on the right of the bar (or run the setup script
 directly) and enter your password once:
 
 ```sh
-~/.config/omarchy/plugins/io.github.alnandr.macbook-fn-keys/scripts/setup
+~/.config/omarchy/plugins/io.github.2strange.mac-fnkeys/scripts/setup
 ```
 
 Setup does three things, all reversible:
@@ -80,6 +92,9 @@ Setup does three things, all reversible:
    loads `hypr/bindings.lua` from the plugin folder (F3, F4, F6). Nothing
    already in that file is modified.
 
+If you already use the upstream plugin, run its `scripts/uninstall` first or just
+keep the helper: both plugins install the same helper at the same path.
+
 ## How it works
 
 - `Service.qml` reads `/sys/module/hid_apple/parameters/fnmode` directly (no
@@ -88,8 +103,12 @@ Setup does three things, all reversible:
   absolute path with the inherited environment cleared, output is bounded to
   one line, the helper call has a 10 s deadline (SIGTERM, then SIGKILL), and
   all children are torn down when the plugin unloads.
-- `BarWidget.qml` paints the mode and forwards clicks to the service, so all
+- `BarWidget.qml` paints the mode and forwards clicks, `Panel.qml` is the menu.
+  Both read the state from the service through `bar.shell.serviceFor()`, so all
   monitors show the same state.
+- On every shell start the service reads `/etc/modprobe.d/hid_apple.conf` and
+  re-applies that mode, because an initramfs that loads `hid_apple` (mkinitcpio
+  `keyboard` + `modconf` hooks) carries a stale copy of that file.
 - `scripts/omarchy-mac-fnmode` is the only code that ever runs as root after
   setup. Read it before running setup; it is under 60 lines.
 
@@ -114,8 +133,8 @@ glyphs. No packages are installed and nothing is downloaded.
 ## Remove
 
 ```sh
-~/.config/omarchy/plugins/io.github.alnandr.macbook-fn-keys/scripts/uninstall
-omarchy plugin remove io.github.alnandr.macbook-fn-keys
+~/.config/omarchy/plugins/io.github.2strange.mac-fnkeys/scripts/uninstall
+omarchy plugin remove io.github.2strange.mac-fnkeys
 ```
 
 Uninstall restores Omarchy's Apple default (`fnmode=2`), removes the helper
@@ -123,4 +142,4 @@ and sudoers rule, and removes the marked block from `bindings.lua`.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Original work by Alan Garcia, changes by 2strange.

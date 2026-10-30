@@ -11,7 +11,7 @@
 set -euo pipefail
 export PATH=/usr/bin:/usr/sbin
 
-plugin_id=io.github.alnandr.macbook-fn-keys
+plugin_id=io.github.2strange.mac-fnkeys
 bindings_file=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/bindings.lua
 marker_begin="-- >>> $plugin_id >>>"
 marker_end="-- <<< $plugin_id <<<"

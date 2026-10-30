@@ -19,7 +19,7 @@ set -euo pipefail
 export PATH=/usr/bin:/usr/sbin
 
 plugin_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-plugin_id=io.github.alnandr.macbook-fn-keys
+plugin_id=io.github.2strange.mac-fnkeys
 parameter=/sys/module/hid_apple/parameters/fnmode
 bindings_file=${XDG_CONFIG_HOME:-$HOME/.config}/hypr/bindings.lua
 marker_begin="-- >>> $plugin_id >>>"
@@ -53,7 +53,7 @@ else
   cat >>"$bindings_file" <<EOF
 
 $marker_begin
--- MacBook Function Keys plugin: F3 Mission Control, F4 Spotlight, F6 Do Not Disturb.
+-- Mac Fn keys plugin: F3 Mission Control, F4 Spotlight/Launchpad, F6 Do Not Disturb.
 -- Managed by the plugin's setup/uninstall scripts; edit the plugin copy instead.
 local macbook_fn_keys = os.getenv("HOME") .. "/.config/omarchy/plugins/$plugin_id/hypr/bindings.lua"
 local macbook_fn_keys_file = io.open(macbook_fn_keys)
