@@ -6,6 +6,8 @@ legend of the function row, plus fixes for Omarchy 4.x (icon not showing) and fo
 keeping the mode across reboots. The privileged helper and setup are unchanged
 from upstream.
 
+![Mac Fn keys menu in the Omarchy bar](preview.png)
+
 Omarchy plugin for MacBooks with the Apple keyboard driver (`hid_apple`). It
 makes the function row send its printed functions (brightness, volume, media,
 Mission Control, Spotlight, Do Not Disturb) without holding Fn, the way macOS
